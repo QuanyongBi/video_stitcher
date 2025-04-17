@@ -42,4 +42,3 @@ def extract_and_save_frames(video_path, output_dir = "data/extracted_frames", in
     return frames, saved_paths
 
 extract_and_save_frames("data/video_data/video5/forest1.mp4", "data/extracted_frames", 10)
-extract_and_save_frames("data/video_data/video3/deer1.mp4", "data/extracted_frames", 2)
