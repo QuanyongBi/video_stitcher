@@ -21,3 +21,5 @@ wheels/
 *.egg
 data/
 .DS_Store
+
+data/*

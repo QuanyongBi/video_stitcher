@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import os
 
-def extract_and_save_frames(video_path, output_dir = "extracted_frames", interval = 1):
+def extract_and_save_frames(video_path, output_dir = "data/extracted_frames", interval = 1):
     # Create output directory if it doesn't exist
     video_name = os.path.splitext(os.path.basename(video_path))[0]
     frames_dir = os.path.join(output_dir, video_name)
@@ -38,4 +38,4 @@ def extract_and_save_frames(video_path, output_dir = "extracted_frames", interva
     print("Extracted", len(frames), "frames from", video_path)
     return frames, saved_paths
 
-extract_and_save_frames("video_data/video5/forest1.mp4", "extracted_frames", 10)
+extract_and_save_frames("data/video_data/video5/forest1.mp4", "extracted_frames", 10)
