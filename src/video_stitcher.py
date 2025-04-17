@@ -29,9 +29,6 @@ def extract_and_save_frames(video_path, output_dir = "extracted_frames", interva
             # Store frame and path
             frames.append(frame)
             saved_paths.append(filepath)
-            
-            if (frame_idx + 1) % 10 == 0:
-                print("Extracted and saved frame", frame_idx + 1, "from", video_path)
                 
             frame_idx += 1
         
@@ -41,4 +38,4 @@ def extract_and_save_frames(video_path, output_dir = "extracted_frames", interva
     print("Extracted", len(frames), "frames from", video_path)
     return frames, saved_paths
 
-extract_and_save_frames("video_data/video5/forest1.mp4")
+extract_and_save_frames("video_data/video5/forest1.mp4", "extracted_frames", 10)
