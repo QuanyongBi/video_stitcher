@@ -14,28 +14,32 @@ def extract_and_save_frames(video_path, output_dir = "data/extracted_frames", in
     count = 0
     frame_idx = 0
     
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
-        
-        # Extract frames based on interval
-        if count % interval == 0:  
-            # Save the frame
-            filename = "frame_" + str(frame_idx) + ".png"
-            filepath = os.path.join(frames_dir, filename)
-            cv2.imwrite(filepath, frame)
+    if not cap.isOpened():
+        print("Wrong directory or some weird stuff happened:", video_path)
+    else:
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
             
-            # Store frame and path
-            frames.append(frame)
-            saved_paths.append(filepath)
+            # Extract frames based on interval
+            if count % interval == 0:  
+                # Save the frame
+                filename = "frame_" + str(frame_idx) + ".png"
+                filepath = os.path.join(frames_dir, filename)
+                cv2.imwrite(filepath, frame)
                 
-            frame_idx += 1
-        
-        count += 1
+                # Store frame and path
+                frames.append(frame)
+                saved_paths.append(filepath)
+                    
+                frame_idx += 1
             
-    cap.release()
-    print("Extracted", len(frames), "frames from", video_path)
+            count += 1
+                
+        cap.release()
+        print("Extracted", len(frames), "frames from", video_path)
     return frames, saved_paths
 
 extract_and_save_frames("data/video_data/video5/forest1.mp4", "data/extracted_frames", 10)
+extract_and_save_frames("data/video_data/video3/dear1.mp4", "data/extracted_frames", 10)
