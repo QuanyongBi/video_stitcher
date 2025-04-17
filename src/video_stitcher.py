@@ -3,11 +3,6 @@ import numpy as np
 import os
 
 def extract_and_save_frames(video_path, output_dir = "data/extracted_frames", interval = 1):
-    # Create output directory if it doesn't exist
-    video_name = os.path.splitext(os.path.basename(video_path))[0]
-    frames_dir = os.path.join(output_dir, video_name)
-    os.makedirs(frames_dir, exist_ok = True)
-    
     frames = []
     saved_paths = []
     cap = cv2.VideoCapture(video_path)
@@ -17,6 +12,11 @@ def extract_and_save_frames(video_path, output_dir = "data/extracted_frames", in
     if not cap.isOpened():
         print("Wrong directory or some weird stuff happened:", video_path)
     else:
+        # Create output directory if it doesn't exist
+        video_name = os.path.splitext(os.path.basename(video_path))[0]
+        frames_dir = os.path.join(output_dir, video_name)
+        os.makedirs(frames_dir, exist_ok = True)
+        
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
@@ -42,4 +42,4 @@ def extract_and_save_frames(video_path, output_dir = "data/extracted_frames", in
     return frames, saved_paths
 
 extract_and_save_frames("data/video_data/video5/forest1.mp4", "data/extracted_frames", 10)
-extract_and_save_frames("data/video_data/video3/dear1.mp4", "data/extracted_frames", 10)
+extract_and_save_frames("data/video_data/video3/deer1.mp4", "data/extracted_frames", 2)
