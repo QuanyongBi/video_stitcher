@@ -91,7 +91,7 @@ def find_transformation(kp1, kp2, matches, method='homography'):
     
     return H, status
 
-def stitch_images(frames, debug_progress = False):
+def stitch_images(frames, high_res_frames, debug_progress = False):
     if len(frames) < 2:
         print("Not enough images to stitch")
         return None
@@ -103,8 +103,8 @@ def stitch_images(frames, debug_progress = False):
     h, w = ref_img.shape[:2]
     
     # Static canvas size, needs to be dynamic tho...
-    canvas_h = h * 5
-    canvas_w = w * 5
+    canvas_h = h * 10
+    canvas_w = w * 10
     
     output = np.zeros((canvas_h, canvas_w, 3), dtype = np.uint8)
     
@@ -120,6 +120,14 @@ def stitch_images(frames, debug_progress = False):
         [0, 1, origin_y],
         [0, 0, 1]
     ], dtype = float)
+    
+    # https://stackoverflow.com/questions/39668174/homography-and-image-scaling-in-opencv
+    T_scale = np.array([
+        [4, 0, 0],
+        [0, 4, 0],
+        [0, 0, 1]
+    ], dtype = float)
+    T_scale_inv = np.linalg.inv(T_scale)
     
     transforms = {mid_idx: T_ref}
     
@@ -141,11 +149,13 @@ def stitch_images(frames, debug_progress = False):
         
         # Chain the homography matrix with multiplication
         T_prev = transforms[i-1]
-        T_cur = T_prev @ H
+        H_scaled = T_scale @ H @ T_scale_inv
+        # T_cur = T_prev @ H
+        T_cur = T_prev @ H_scaled
         transforms[i] = T_cur
         
         # Warping image
-        img = frames[i]
+        img = high_res_frames[i]
         warped = np.zeros_like(output)
         warped = cv2.warpPerspective(img, T_cur, 
                                      (canvas_w, canvas_h), 
@@ -179,11 +189,13 @@ def stitch_images(frames, debug_progress = False):
         
         # Chain the homography matrix with multiplication
         T_next = transforms[i+1]
-        T_cur = T_next @ H
+        H_scaled = T_scale @ H @ T_scale_inv
+        # T_cur = T_next @ H
+        T_cur = T_next @ H_scaled
         transforms[i] = T_cur
         
         # Warping image
-        img = frames[i]
+        img = high_res_frames[i]
         warped = np.zeros_like(output)
         warped = cv2.warpPerspective(img, T_cur, 
                                      (canvas_w, canvas_h), 
@@ -260,15 +272,16 @@ def compress_video(input_path, output_path, scale = 0.5, codec = "mp4v"):
     
 def main():
     # Extract frames from video
-    video_path = "data/video_data/video2/real_002.mp4"
+    video_path = "data/video_data/video1/real_001.mp4"
     compress_video(video_path,
                "data/compressed/hd_halfres.mp4",
-               scale=0.5,
+               scale=0.25,
                codec='mp4v')
     frames = extract_and_save_frames("data/compressed/hd_halfres.mp4", "data/extracted_frames", 1)
+    high_res_frames = extract_and_save_frames("data/video_data/video1/real_001.mp4", "data/extracted_frames", 1)
     
     # Visualizing the output
-    output = stitch_images(frames, False)
+    output = stitch_images(frames, high_res_frames, False)
     if output is not None:
         visualize_output(frames, output)
         
