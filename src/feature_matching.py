@@ -25,7 +25,7 @@ def detect_and_match_features(frame_cur, frame_prev, feature_num):
     # Apply ratio test
     good_matches = []
     for m,n in matches:
-        if m.distance < 0.5 * n.distance:
+        if m.distance < 0.6 * n.distance:
             good_matches.append(m)
 
     print(f"Found {len(good_matches)} good matches")

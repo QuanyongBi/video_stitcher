@@ -126,14 +126,26 @@ def stitch_images_linear(frames, debug_progress = False):
     return output
 
 def stitch_images_stack(frames):
-    reference_panorama = frames[0].copy()
+    # m = len(frames)//2
+    # reference_panorama_left = frames[m].copy()
+    # reference_panorama_right = frames[m].copy()
     
-    for i in range(1, len(frames)):
-        print(f"Processing frame {i}/{len(frames)-1} ({i/(len(frames)-1)*100:.2f}%)")
-        cur_frame = frames[i]
-        reference_panorama = stitch_two_frames(reference_panorama, cur_frame)
-        # Feature extraction and matching
+    # for i in range(m, len(frames)):
+    #     print(f"Processing frame {i}/{len(frames)-1} ({i/(len(frames)-1)*100:.2f}%)")
+    #     cur_frame = frames[i]
+    #     reference_panorama_right = stitch_two_frames(reference_panorama_right, cur_frame)
+    
+    # for i in range(m, -1, -1):
+    #     print(f"Processing frame {i}/{len(frames)-1} ({i/(len(frames)-1)*100:.2f}%)")
+    #     cur_frame = frames[i]
+    #     reference_panorama_left = stitch_two_frames(reference_panorama_left, cur_frame)
         
+    # return stitch_two_frames(reference_panorama_left, reference_panorama_right)
+    reference_panorama = frames[0]
+    base_features = 50000
+    for i in range(20,30):
+        print(f"Processing frame {i}/{len(frames)-1} ({i/(len(frames)-1)*100:.2f}%)")
+        reference_panorama = stitch_two_frames(reference_panorama, frames[i], base_features)
     return reference_panorama
 
 
@@ -144,17 +156,16 @@ def stitch_images_divide_conquer(frames):
     if(len(frames) == 1):
         return frames[0]
     if(len(frames) == 2):
-        return stitch_two_frames(frames[0], frames[1])
+        return stitch_two_frames(frames[0], frames[1], 50000)
     
     mid = len(frames) // 2
     left_res = stitch_images_divide_conquer(frames[:mid])
     right_res = stitch_images_divide_conquer(frames[mid+1:])
         
-    return stitch_two_frames(left_res, right_res)
-    
+    return stitch_two_frames(left_res, right_res, 50000)
 
-def stitch_two_frames(reference_panorama, cur_frame):
-    kp_cur, _, kp_prev, _, matches = detect_and_match_features(frame_cur=cur_frame, frame_prev=reference_panorama, feature_num=20000)
+def stitch_two_frames(reference_panorama, cur_frame, feature_num):
+    kp_cur, _, kp_prev, _, matches = detect_and_match_features(frame_cur=cur_frame, frame_prev=reference_panorama, feature_num=feature_num)
     # Find homography matrix
     H, _ = find_transformation(kp_cur, kp_prev, matches)
         
@@ -188,7 +199,6 @@ def stitch_two_frames(reference_panorama, cur_frame):
     canvas[warped_mask > 0] = warped_cur_frame[warped_mask > 0]
     reference_panorama = canvas
     return reference_panorama
-
 
 def calculate_canvas_size(reference_panorama, cur_frame, H):
     h_ref, w_ref = reference_panorama.shape[:2]
