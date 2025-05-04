@@ -7,28 +7,30 @@ import cv2
 def main():
     # Extract frames from video
     video_path = "data/video_data/video1/real_001.mp4"
+    # video_path = "data/compressed/hd_halfres.mp4"
     # compress_video(video_path,
     #            output_path="data/compressed/hd_halfres.mp4",
     #            scale=0.5,
     #            codec='mp4v')
     # high_res_frames = extract_and_save_frames("data/video_data/custom/bedroom.MOV", "data/extracted_frames", 16)
-    frames = extract_and_save_frames(video_path, "data/extracted_frames", 15)
-    # corrected = correct_all_frames(frames)
+    frames = extract_and_save_frames(video_path, "data/extracted_frames", 5)
+    corrected = correct_all_frames(frames)
     
     # Visualizing the output
-    # output = stitch_images_linear(corrected, False)
-    # if output is not None:
-    #     visualize_output(frames, output)
-    
-    output = stitch_images_stack(frames)
+    output = stitch_images_stack(corrected)
     if output is not None:
-        visualize_output(frames, output)
+        visualize_output(output)
+    
+    # output = stitch_images_divide_conquer(corrected)
+    # # output = stitch_images_divide_conquer(frames)
+    # if output is not None:
+    #     visualize_output(output)
     
     
     # image_stitcher = cv2.Stitcher_create()
     # err, output = image_stitcher.stitch(corrected)
     # if not err:
-    #     visualize_output(frames, output)
+    #     visualize_output(output)
     
     return 
         
