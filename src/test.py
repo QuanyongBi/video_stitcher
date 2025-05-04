@@ -6,18 +6,18 @@ import cv2
 
 def main():
     # Extract frames from video
-    video_path = "data/video_data/video1/real_001.mp4"
+    video_paths = ["data/video_data/video5/forest1.mp4", "data/video_data/video5/forest2.mp4"]
     # video_path = "data/compressed/hd_halfres.mp4"
     # compress_video(video_path,
     #            output_path="data/compressed/hd_halfres.mp4",
     #            scale=0.5,
     #            codec='mp4v')
     # high_res_frames = extract_and_save_frames("data/video_data/custom/bedroom.MOV", "data/extracted_frames", 16)
-    frames = extract_and_save_frames(video_path, "data/extracted_frames", 5)
-    corrected = correct_all_frames(frames)
+    frames = extract_and_save_frames(video_paths, "data/extracted_frames", 5)
+    # corrected = correct_all_frames(frames)
     
     # Visualizing the output
-    output = stitch_images_stack(corrected)
+    output = stitch_images_stack(frames)
     if output is not None:
         visualize_output(output)
     

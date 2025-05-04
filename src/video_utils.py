@@ -51,40 +51,42 @@ def compress_video(input_path, output_path, scale=0.5, codec="mp4v"):
     return success
 
 
-def extract_and_save_frames(video_path, output_dir = "data/extracted_frames", interval = 1):
+def extract_and_save_frames(video_paths, output_dir = "data/extracted_frames", interval = 1):
     frames = []
-    cap = cv2.VideoCapture(video_path)
-    count = 0
-    frame_idx = 0
     
-    if not cap.isOpened():
-        print("Wrong directory or some weird stuff happened:", video_path)
-    else:
-        # Create output directory if it doesn't exist
-        video_name = os.path.splitext(os.path.basename(video_path))[0]
-        frames_dir = os.path.join(output_dir, video_name)
-        os.makedirs(frames_dir, exist_ok = True)
+    for video_path in video_paths:
+        cap = cv2.VideoCapture(video_path)
+        count = 0
+        frame_idx = 0
         
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
+        if not cap.isOpened():
+            print("Wrong directory or some weird stuff happened:", video_path)
+        else:
+            # Create output directory if it doesn't exist
+            video_name = os.path.splitext(os.path.basename(video_path))[0]
+            frames_dir = os.path.join(output_dir, video_name)
+            os.makedirs(frames_dir, exist_ok = True)
             
-            # Extract frames based on interval
-            if count % interval == 0:  
-                # Save the frame
-                # filename = "frame_" + str(frame_idx) + ".png"
-                # filepath = os.path.join(frames_dir, filename)
-                # cv2.imwrite(filepath, frame)
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
                 
-                # Store frame and path
-                frames.append(frame)
-                # saved_paths.append(filepath)
+                # Extract frames based on interval
+                if count % interval == 0:  
+                    # Save the frame
+                    # filename = "frame_" + str(frame_idx) + ".png"
+                    # filepath = os.path.join(frames_dir, filename)
+                    # cv2.imwrite(filepath, frame)
                     
-                frame_idx += 1
-            
-            count += 1
+                    # Store frame and path
+                    frames.append(frame)
+                    # saved_paths.append(filepath)
+                        
+                    frame_idx += 1
                 
-        cap.release()
-        print("Extracted", len(frames), "frames from", video_path)
+                count += 1
+                    
+            cap.release()
+    print("Extracted", len(frames), "frames from", video_paths)
     return frames
