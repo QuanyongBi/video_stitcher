@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
-import os
-from matplotlib import pyplot as plt
+from feature_matching import detect_and_match_features, find_transformation
 
 def stitch_images_linear(frames, debug_progress = False):
     if len(frames) < 2:

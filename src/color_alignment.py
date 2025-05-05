@@ -72,7 +72,6 @@ def correct_luminance_and_color(target, reference):
     
     return corrected
 
-
 def correct_color_channel(source, reference):
     """
     Correct a color channel (a or b in LAB) based on the reference channel.
