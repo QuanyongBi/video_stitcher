@@ -3,95 +3,7 @@ import numpy as np
 import os
 from matplotlib import pyplot as plt
 
-def extract_and_save_frames(video_path, output_dir = "data/extracted_frames", interval = 1):
-    frames = []
-    cap = cv2.VideoCapture(video_path)
-    count = 0
-    frame_idx = 0
-    
-    if not cap.isOpened():
-        print("Wrong directory or some weird stuff happened:", video_path)
-    else:
-        # Create output directory if it doesn't exist
-        video_name = os.path.splitext(os.path.basename(video_path))[0]
-        frames_dir = os.path.join(output_dir, video_name)
-        os.makedirs(frames_dir, exist_ok = True)
-        
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-            
-            # Extract frames based on interval
-            if count % interval == 0:  
-                # Save the frame
-                # filename = "frame_" + str(frame_idx) + ".png"
-                # filepath = os.path.join(frames_dir, filename)
-                # cv2.imwrite(filepath, frame)
-                
-                # Store frame and path
-                frames.append(frame)
-                # saved_paths.append(filepath)
-                    
-                frame_idx += 1
-            
-            count += 1
-                
-        cap.release()
-        print("Extracted", len(frames), "frames from", video_path)
-    return frames
-
-def detect_and_match_features(img1, img2):
-    # Convert to grayscale
-    gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
-    gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
-    
-    orb = cv2.ORB_create(nfeatures=5000)
-    
-    kp1, desc1 = orb.detectAndCompute(gray1, None)
-    kp2, desc2 = orb.detectAndCompute(gray2, None)
-    
-    print(f"Image 1: {len(kp1)} keypoints detected")
-    print(f"Image 2: {len(kp2)} keypoints detected")
-    
-    # Currently using Brute Force Matching
-    # To be Optimize
-    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
-    matches = bf.knnMatch(desc1, desc2, k=2)
-    
-    # Apply ratio test
-    good_matches = []
-    for m,n in matches:
-        if m.distance < 0.75 * n.distance:
-            good_matches.append(m)
-    
-    print(f"Found {len(good_matches)} good matches")
-    
-    # # Draw matches
-    # match_img = cv2.drawMatches(img1, kp1, img2, kp2, good_matches, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-    
-    # # Display results
-    # plt.figure(figsize=(16, 8))
-    # plt.imshow(cv2.cvtColor(match_img, cv2.COLOR_BGR2RGB))
-    # plt.title(f'{len(good_matches)} Matches Found')
-    # plt.tight_layout()
-    # plt.show()
-    
-    return kp1, desc1, kp2, desc2, good_matches
-
-def find_transformation(kp1, kp2, matches, method='homography'):
-    if len(matches) < 4:
-        print("Not enough matches to find homography")
-        return None, None
-    
-    src_pts = np.float32([kp1[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
-    dst_pts = np.float32([kp2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
-    
-    H, status = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
-    
-    return H, status
-
-def stitch_images(frames, debug_progress = False):
+def stitch_images_linear(frames, debug_progress = False):
     if len(frames) < 2:
         print("Not enough images to stitch")
         return None
@@ -103,10 +15,11 @@ def stitch_images(frames, debug_progress = False):
     h, w = ref_img.shape[:2]
     
     # Static canvas size, needs to be dynamic tho...
-    canvas_h = h * 10
-    canvas_w = w * 10
+    canvas_h = h * 6
+    canvas_w = w * 6
     
     output = np.zeros((canvas_h, canvas_w, 3), dtype = np.uint8)
+    covered = np.zeros((canvas_h, canvas_w), dtype=np.uint8)
     
     origin_x = canvas_w // 2 - w // 2
     origin_y = canvas_h // 2 - h // 2
@@ -121,13 +34,20 @@ def stitch_images(frames, debug_progress = False):
         [0, 0, 1]
     ], dtype = float)
     
+    # T_scale = np.array([
+    #     [2, 0, 0],
+    #     [0, 2, 0],
+    #     [0, 0, 1]
+    # ], dtype = float)
+    # T_scale_inv = np.linalg.inv(T_scale)
+    
     transforms = {mid_idx: T_ref}
     
     # Using middle out lol
     for i in range(mid_idx + 1, n):
         print(f"Progress: {((i - (mid_idx + 1)) / (len(frames) - 1) * 100.0):.2f}%")
         
-        kp_prev, _, kp_cur, _, matches = detect_and_match_features(frames[i], frames[i-1], feature_num=10000)
+        kp_prev, _, kp_cur, _, matches = detect_and_match_features(frames[i], frames[i-1], feature_num=5000)
 
         if matches is None or len(matches) < 5:
             print("Not enough matches between images", i - 1, "and", i)
@@ -141,11 +61,13 @@ def stitch_images(frames, debug_progress = False):
         
         # Chain the homography matrix with multiplication
         T_prev = transforms[i-1]
+        # H_scaled = T_scale @ H @ T_scale_inv
+        # T_cur = T_prev @ H
         T_cur = T_prev @ H
         transforms[i] = T_cur
         
         # Warping image
-        img = high_res_frames[i]
+        img = frames[i]
         warped = np.zeros_like(output)
         warped = cv2.warpPerspective(img, T_cur, 
                                      (canvas_w, canvas_h), 
@@ -155,6 +77,11 @@ def stitch_images(frames, debug_progress = False):
         
         mask = (cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY) > 0).astype(np.uint8) * 255
         output[mask > 0] = warped[mask > 0]
+        # new_area  = cv2.bitwise_and(mask, cv2.bitwise_not(covered))
+
+        # paste only into still‑empty spots
+        # output[new_area==255]  = warped[new_area==255]
+        # covered = cv2.bitwise_or(covered, mask)
         
         # if debug_progress:
         #     plt.figure(figsize = (15, 10))
@@ -165,7 +92,7 @@ def stitch_images(frames, debug_progress = False):
     for i in range(mid_idx - 1, -1, -1):
         print(f"Progress: {((((mid_idx) - i) / (len(frames) - 1) + 0.5) * 100.0):.2f}%")
              
-        kp_next, _, kp_cur, _, matches = detect_and_match_features(frames[i], frames[i+1], feature_num=10000)
+        kp_next, _, kp_cur, _, matches = detect_and_match_features(frames[i+1], frames[i], feature_num=5000)
 
         if matches is None or len(matches) < 5:
             print("Not enough matches between images", i + 1, "and", i)
@@ -179,11 +106,13 @@ def stitch_images(frames, debug_progress = False):
         
         # Chain the homography matrix with multiplication
         T_next = transforms[i+1]
+        # H_scaled = T_scale @ H @ T_scale_inv
         T_cur = T_next @ H
+        # T_cur = T_next @ H_scaled
         transforms[i] = T_cur
         
         # Warping image
-        img = high_res_frames[i]
+        img = frames[i]
         warped = np.zeros_like(output)
         warped = cv2.warpPerspective(img, T_cur, 
                                      (canvas_w, canvas_h), 
@@ -193,6 +122,11 @@ def stitch_images(frames, debug_progress = False):
         
         mask = (cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY) > 0).astype(np.uint8) * 255
         output[mask > 0] = warped[mask > 0]
+        # new_area = cv2.bitwise_and(mask, cv2.bitwise_not(covered))
+
+        # paste only into still‑empty spots
+        # output[new_area==255] = warped[new_area==255]
+        # covered = cv2.bitwise_or(covered, mask)
         
         # if debug_progress:
         #     plt.figure(figsize = (15, 10))
@@ -201,158 +135,140 @@ def stitch_images(frames, debug_progress = False):
         #     plt.show()
         
     return output
-   
-def visualize_output(frames, output):
-    
-    # Show original images - too much... not needed
-    # n_images = len(image_paths)
-    # for i, path in enumerate(image_paths):
-    #     img = cv2.imread(path)
-    #     ax = plt.subplot(2, n_images, i+1)
-    #     ax.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    #     ax.set_title(f'Image {i}')
-    #     ax.axis('off')
-    
-    # Show output
-    plt.figure(figsize=(20, 10))
-    ax = plt.subplot(1, 1, 1)
-    ax.imshow(cv2.cvtColor(output, cv2.COLOR_BGR2RGB))
-    ax.set_title('Stitched Panorama')
-    ax.axis('off')
-    
-    plt.tight_layout()
-    plt.show()
-    
-def compress_video(input_path, output_path, scale = 0.5, codec = "mp4v"):
-    cap = cv2.VideoCapture(input_path)
-    if not cap.isOpened():
-        raise IOError(f"Cannot open video file {input_path}")
-    
-    # Setting properties
-    src_fps = cap.get(cv2.CAP_PROP_FPS)
-    src_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    src_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    out_w = int(src_width  * scale)
-    out_h = int(src_height * scale)
-    
-    # Ensure output directory exists
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    
-    # Setup VideoWriter
-    fourcc = cv2.VideoWriter_fourcc(*codec)
-    writer = cv2.VideoWriter(output_path, fourcc, src_fps, (out_w, out_h))
-    
-    print(f"Compressing {input_path} to {output_path}")
-    print(f"{src_width}×{src_height}@{src_fps:.2f}fps to {out_w}×{out_h}@{src_fps:.2f}fps")
-    
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        # Resize frame
-        small = cv2.resize(frame, (out_w, out_h), interpolation=cv2.INTER_AREA)
-        writer.write(small)
-    
-    cap.release()
-    writer.release()
-    print("Done Compressing!")
-    
-    
-def main():
-    # Extract frames from video
-    video_path = "data/video_data/video2/real_002.mp4"
-    compress_video(video_path,
-               "data/compressed/hd_halfres.mp4",
-               scale=0.5,
-               codec='mp4v')
-    frames = extract_and_save_frames("data/compressed/hd_halfres.mp4", "data/extracted_frames", 1)
-    
-    # Visualizing the output
-    output = stitch_images(frames, False)
-    if output is not None:
-        visualize_output(frames, output)
-        
-if __name__ == "__main__":
-    main()
 
-# def create_canvs(img1_path, img2_path, H):
-#     img1, img2 = cv2.imread(img1_path), cv2.imread(img2_path)
-#     h1, w1 = img1.shape[:2]
-#     h2, w2 = img2.shape[:2]
-    
-#     canvas_h = h1 * 3
-#     canvas_w = w2 * 3
-    
-#     # Define the origin (center of the canvas)
-#     origin_x = canvas_w // 2
-#     origin_y = canvas_h // 2
-    
-#     # Calculate offset for img1 to place its center at origin
-#     img1_offset_x = origin_x - (w1 // 2)
-#     img1_offset_y = origin_y - (h1 // 2)
-    
-#     # Create empty canvas
-#     panorama = np.zeros((canvas_h, canvas_w, 3), dtype=np.uint8)
-#     # Add red border to the first image
-#     img1_with_border = img1.copy()
-#     img1_with_border[0:3, :] = [0, 0, 255]  # Top border
-#     img1_with_border[:, 0:3] = [0, 0, 255]  # Left border
-#     img1_with_border[h1-3:h1, :] = [0, 0, 255]  # Bottom border
-#     img1_with_border[:, w1-3:w1] = [0, 0, 255]  # Right border
-#     # Place the first image on the canvas
-#     panorama[img1_offset_y:img1_offset_y+h1, img1_offset_x:img1_offset_x+w1] = img1_with_border
-    
-#     T1 = np.array([
-#         [1, 0, img1_offset_x],
-#         [0, 1, img1_offset_y],
-#         [0, 0, 1]
-#     ])
-#     H_inv = np.linalg.inv(H)
-#     transform_canvas_to_img2 = np.dot(H_inv, np.linalg.inv(T1))
-#     img2_transformed = cv2.warpPerspective(img2, 
-#                                           np.linalg.inv(transform_canvas_to_img2), 
-#                                           (canvas_w, canvas_h))
-#     _, mask = cv2.threshold(cv2.cvtColor(img2_transformed, cv2.COLOR_BGR2GRAY), 
-#                             1, 255, cv2.THRESH_BINARY)
-#     # Replace the pixels in the panorama with the transformed img2
-#     # For simplicity, we'll just overwrite the pixels without blending
-#     panorama[mask > 0] = img2_transformed[mask > 0]
-    
-#     non_black = np.where(panorama > 0)
-#     if len(non_black[0]) > 0:
-#         y_min, y_max = np.min(non_black[0]), np.max(non_black[0])
-#         x_min, x_max = np.min(non_black[1]), np.max(non_black[1])
-        
-#         # Add some padding
-#         padding = 10
-#         y_min = max(0, y_min - padding)
-#         y_max = min(canvas_h - 1, y_max + padding)
-#         x_min = max(0, x_min - padding)
-#         x_max = min(canvas_w - 1, x_max + padding)
-        
-#         # Crop the image
-#         panorama = panorama[y_min:y_max+1, x_min:x_max+1]
-    
-#     # Display results
-#     plt.figure(figsize=(20, 10))
-    
-#     plt.subplot(131)
-#     plt.imshow(cv2.cvtColor(img1, cv2.COLOR_BGR2RGB))
-#     plt.title('Image 1')
-    
-#     plt.subplot(132)
-#     plt.imshow(cv2.cvtColor(img2, cv2.COLOR_BGR2RGB))
-#     plt.title('Image 2')
-    
-#     plt.subplot(133)
-#     plt.imshow(cv2.cvtColor(panorama, cv2.COLOR_BGR2RGB))
-#     plt.title('Stitched Panorama')
-    
-#     plt.tight_layout()
-#     plt.show()
-#     return result
+def stitch_images_stack(frames):
+    reference_panorama = frames[0]
+    base_features = 10000
+    for i in range(1, len(frames)):
+        print(f"Processing frame {i}/{len(frames)-1} ({i/(len(frames)-1)*100:.2f}%)")
+        reference_panorama = stitch_two_frames(reference_panorama, frames[i], base_features)
+    return reference_panorama
 
 
-# H, status = find_transformation(kp1, kp2, matches)
-# print("H=", H)
-# result = create_canvs(paths[0], paths[1], H)
+def stitch_images_divide_conquer(frames):
+    print("cur_recurrence level: ", len(frames))
+    if(len(frames) == 0):
+        return None
+    if(len(frames) == 1):
+        return frames[0]
+    if(len(frames) == 2):
+        return stitch_two_frames(frames[0], frames[1], 50000)
+    
+    mid = len(frames) // 2
+    left_res = stitch_images_divide_conquer(frames[:mid])
+    right_res = stitch_images_divide_conquer(frames[mid+1:])
+        
+    return stitch_two_frames(left_res, right_res, 50000)
+
+def stitch_two_frames(reference_panorama_highres, cur_frame_highres, feature_num=10000, scale_factor=0.25):
+    # Create low resolution versions
+    h, w = reference_panorama_highres.shape[:2]
+    new_h, new_w = int(h * scale_factor), int(w * scale_factor)
+    reference_panorama_lowres = cv2.resize(reference_panorama_highres, (new_w, new_h))
+    
+    h, w = cur_frame_highres.shape[:2]
+    new_h, new_w = int(h * scale_factor), int(w * scale_factor)
+    cur_frame_lowres = cv2.resize(cur_frame_highres, (new_w, new_h))
+    
+    # Get dimensions to calculate scaling factors
+    h_ref_high, w_ref_high = reference_panorama_highres.shape[:2]
+    h_ref_low, w_ref_low = reference_panorama_lowres.shape[:2]
+    
+    # Calculate scaling factors
+    scale_factor_x = w_ref_high / w_ref_low
+    scale_factor_y = h_ref_high / h_ref_low
+    
+    # Detect features and find matches on low-resolution images
+    kp_cur, _, kp_prev, _, matches = detect_and_match_features(
+        frame_cur=cur_frame_lowres, 
+        frame_prev=reference_panorama_lowres, 
+        feature_num=feature_num
+    )
+    
+    # Find homography matrix for low-res images
+    H_lowres, _ = find_transformation(kp_cur, kp_prev, matches)
+    
+    if H_lowres is None:
+        print("Could not find homography, returning original reference panorama")
+        return reference_panorama_highres
+    
+    # Create scaling matrices
+    scale_matrix = np.array([
+        [scale_factor_x, 0, 0],
+        [0, scale_factor_y, 0],
+        [0, 0, 1]
+    ], dtype=np.float32)
+    scale_matrix_inv = np.array([
+        [1/scale_factor_x, 0, 0],
+        [0, 1/scale_factor_y, 0],
+        [0, 0, 1]
+    ], dtype=np.float32)
+    
+    # Scale the homography matrix: H_highres = S * H_lowres * S^(-1)
+    H_highres = scale_matrix @ H_lowres @ scale_matrix_inv
+    
+    # Create a new canvas based on the high-res images
+    canvas_w, canvas_h, offset_x, offset_y = calculate_canvas_size(reference_panorama_highres, cur_frame_highres, H_highres)
+    canvas = np.zeros((canvas_h, canvas_w, 3), dtype=np.uint8)
+    
+    h_ref, w_ref = reference_panorama_highres.shape[:2]
+    canvas[offset_y:offset_y+h_ref, offset_x:offset_x+w_ref] = reference_panorama_highres
+    
+    Translation = np.array([
+        [1, 0, offset_x],
+        [0, 1, offset_y],
+        [0, 0, 1]
+    ], dtype=np.float32)
+    
+    H_combined = Translation @ H_highres
+    
+    # Warp the high-res current frame
+    warped_cur_frame = np.zeros_like(canvas)
+    warped_cur_frame = cv2.warpPerspective(
+        cur_frame_highres, 
+        H_combined, 
+        (canvas_w, canvas_h), 
+        dst=warped_cur_frame,
+        flags=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_TRANSPARENT
+    )
+    
+    # Create warped mask and compute new area
+    warped_mask = cv2.cvtColor(warped_cur_frame, cv2.COLOR_BGR2GRAY) > 0
+    canvas[warped_mask] = warped_cur_frame[warped_mask]
+    
+    return canvas
+
+def calculate_canvas_size(reference_panorama, cur_frame, H):
+    h_ref, w_ref = reference_panorama.shape[:2]
+    h_cur, w_cur = cur_frame.shape[:2]
+    
+    # Get corners of current frame
+    corners = np.array([
+        [0, 0, 1],          # top-left
+        [w_cur, 0, 1],      # top-right
+        [w_cur, h_cur, 1],  # bottom-right
+        [0, h_cur, 1]       # bottom-left
+    ], dtype=np.float32).T
+    
+    # Transform corners through homography
+    transformed_corners = H @ corners
+    # Normalize homogeneous coordinates
+    transformed_corners /= transformed_corners[2]
+    
+    # Find min/max x and y coordinates - use floor/ceil to ensure coverage
+    min_x = int(min(0, np.floor(transformed_corners[0].min())))
+    min_y = int(min(0, np.floor(transformed_corners[1].min())))
+    max_x = int(max(w_ref, np.ceil(transformed_corners[0].max())))
+    max_y = int(max(h_ref, np.ceil(transformed_corners[1].max())))
+    
+    # Add padding
+    padding = 0  # Add some buffer
+    width = max_x - min_x + padding*2
+    height = max_y - min_y + padding*2
+    
+    # Calculate offset for the reference panorama
+    offset_x = abs(min_x) + padding if min_x < 0 else padding
+    offset_y = abs(min_y) + padding if min_y < 0 else padding
+    
+    return width, height, offset_x, offset_y

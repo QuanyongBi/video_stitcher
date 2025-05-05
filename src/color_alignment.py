@@ -73,54 +73,9 @@ def correct_luminance_and_color(target, reference):
     return corrected
 
 
-def match_histograms(source, reference):
-    """
-    Match the histogram of the source to the reference.
-    
-    Args:
-        source: Source image channel
-        reference: Reference image channel
-        
-    Returns:
-        Histogram-matched source channel
-    """
-    # Calculate histograms
-    hist_source, bins = np.histogram(source.flatten(), 256, [0, 256])
-    hist_reference, _ = np.histogram(reference.flatten(), 256, [0, 256])
-    
-    # Calculate cumulative distribution functions (CDFs)
-    cdf_source = hist_source.cumsum()
-    cdf_source = cdf_source / float(cdf_source.max())
-    
-    cdf_reference = hist_reference.cumsum()
-    cdf_reference = cdf_reference / float(cdf_reference.max())
-    
-    # Create lookup table
-    lookup_table = np.zeros(256)
-    
-    # Find the closest CDF value
-    for i in range(256):
-        if cdf_source[i] != 0:
-            # Find the closest match in the reference CDF
-            idx = np.abs(cdf_reference - cdf_source[i]).argmin()
-            lookup_table[i] = idx
-    
-    # Apply lookup table
-    matched = cv2.LUT(source, lookup_table.astype('uint8'))
-    
-    return matched
-
-
 def correct_color_channel(source, reference):
     """
     Correct a color channel (a or b in LAB) based on the reference channel.
-    
-    Args:
-        source: Source color channel
-        reference: Reference color channel
-        
-    Returns:
-        Corrected color channel
     """
     # Calculate statistics
     mean_source = np.mean(source)
@@ -129,21 +84,74 @@ def correct_color_channel(source, reference):
     mean_reference = np.mean(reference)
     std_reference = np.std(reference)
     
-    # Apply mean and standard deviation correction with a weight factor
-    # to avoid over-saturation
-    weight = 0.8  # Adjust between 0 and 1
+    # Determine appropriate weight based on histogram similarity
+    hist_source, _ = np.histogram(source.flatten(), 256, [0, 256])
+    hist_reference, _ = np.histogram(reference.flatten(), 256, [0, 256])
     
-    # Normalize
-    normalized = (source - mean_source)
+    # Normalize histograms for comparison
+    hist_source = hist_source / np.sum(hist_source)
+    hist_reference = hist_reference / np.sum(hist_reference)
     
-    # Scale by the ratio of standard deviations
-    if std_source > 0:
+    # Calculate histogram intersection (higher means more similar)
+    similarity = np.sum(np.minimum(hist_source, hist_reference))
+    
+    # Adaptive weight: more different = stronger correction
+    weight = max(0.5, min(0.9, 1.0 - similarity))
+    
+    # Apply mean and standard deviation correction
+    normalized = (source.astype(np.float32) - mean_source)
+    
+    # Scale by the ratio of standard deviations (avoid division by zero)
+    if std_source > 1e-5:
         normalized = normalized * (std_reference / std_source)
     
-    # Apply weighted correction - blend between original and fully corrected
+    # Apply weighted correction
     corrected = (normalized + mean_reference) * weight + source * (1 - weight)
     
-    # Clip to valid range for a,b channels in LAB (-128 to 127)
+    # Clip to valid OpenCV LAB range for a,b channels (usually 0-255 in OpenCV)
+    # This will be correctly mapped to -128 to 127 range internally
     corrected = np.clip(corrected, 0, 255).astype('uint8')
     
     return corrected
+
+def match_histograms(source, reference):
+    """
+    Match the histogram of source to reference using a more robust approach.
+    """
+    # Calculate CDFs
+    hist_source, bins = np.histogram(source.flatten(), 256, [0, 256])
+    hist_reference, _ = np.histogram(reference.flatten(), 256, [0, 256])
+    
+    # Calculate normalized cumulative histograms
+    cdf_source = np.cumsum(hist_source).astype(np.float64)
+    cdf_source /= cdf_source[-1]
+    
+    cdf_reference = np.cumsum(hist_reference).astype(np.float64)
+    cdf_reference /= cdf_reference[-1]
+    
+    # Create interpolation function for smoother mapping
+    # This creates a monotonically increasing mapping
+    interp_fn = interp1d(
+        np.arange(256), 
+        cdf_source,
+        bounds_error=False, 
+        fill_value=(0, 1)
+    )
+    source_values = interp_fn(np.arange(256))
+    
+    # Find the corresponding reference values
+    lookup_table = np.zeros(256)
+    for i in range(256):
+        # Find reference level with the closest CDF value
+        if source_values[i] <= 0:
+            lookup_table[i] = 0
+        elif source_values[i] >= 1:
+            lookup_table[i] = 255
+        else:
+            # Find where in the reference CDF we get the same value
+            lookup_table[i] = np.interp(source_values[i], cdf_reference, np.arange(256))
+    
+    # Apply lookup table
+    matched = cv2.LUT(source, lookup_table.astype('uint8'))
+    
+    return matched
