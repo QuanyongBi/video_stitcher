@@ -9,11 +9,11 @@ def detect_and_match_features(frame_cur, frame_prev, feature_num):
     gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
     gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
     
-    # orb = cv2.ORB_create(nfeatures=feature_num)
-    sift = cv2.SIFT_create()
+    # detector = cv2.ORB_create(nfeatures=feature_num)
+    detector = cv2.SIFT_create()
     
-    kp1, desc1 = sift.detectAndCompute(gray1, None)
-    kp2, desc2 = sift.detectAndCompute(gray2, None)
+    kp1, desc1 = detector.detectAndCompute(gray1, None)
+    kp2, desc2 = detector.detectAndCompute(gray2, None)
     
     print(f"Image 1: {len(kp1)} keypoints detected")
     print(f"Image 2: {len(kp2)} keypoints detected")
@@ -26,7 +26,7 @@ def detect_and_match_features(frame_cur, frame_prev, feature_num):
     
     # FLANN parameters
     FLANN_INDEX_KDTREE = 1
-    index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 6)
+    index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=6)
     search_params = dict(checks=80)
     
     # Initiate the FLANN matcher

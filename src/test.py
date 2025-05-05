@@ -6,7 +6,7 @@ import cv2
 
 def main():
     # Extract frames from video
-    video_paths = ["data/video_data/video4/real_004.mp4"]
+    video_paths = ["data/video_data/video9/clip1.mp4", "data/video_data/video9/clip2.mp4", "data/video_data/video9/clip3.mp4"]
     # frames = extract_and_save_frames(video_paths, 10)
     # corrected = correct_all_frames(frames, 0)
     # corrected_low_res = correct_all_frames(low_res_frames, 0)
@@ -27,14 +27,14 @@ def main():
     #     visualize_output(output)
     
     # New stuff here...
-    frames = extract_and_save_frames(video_paths[0], 10)
+    frames = extract_and_save_frames(video_paths[0], 5)
     output_pano_l = stitch_images_stack(frames[0:len(frames) // 2])
     output_pano_r = stitch_images_stack(frames[(len(frames) // 2 - 1):len(frames)])
     output_pano = stitch_two_frames(output_pano_r, output_pano_l, feature_num=75000)
     if output_pano is not None:
         for i in range(1, len(video_paths)):
             cur_vid = video_paths[i]
-            frames = extract_and_save_frames(cur_vid, 10)
+            frames = extract_and_save_frames(cur_vid, 5)
             output_pano_l = stitch_images_stack(frames[0:len(frames) // 2])
             output_pano_r = stitch_images_stack(frames[(len(frames) // 2 - 1):len(frames)])
             cur_pano = stitch_two_frames(output_pano_r, output_pano_l, feature_num=75000)
