@@ -136,27 +136,37 @@ def main():
     print()
     
     # Extract frames from videos
+    # Each video file would be proceeded seperatly
     print("Extracting frames from videos...")
-    frames = extract_and_save_frames(
-        video_files, 
-        output_dir="data/extracted_frames",
-        interval=args.interval
-    )
+    total_frames = 0
+    frames_per_file = []
+    for video in video_files: 
+        frames = extract_and_save_frames(
+            video, 
+            interval=args.interval
+        )
+        # Apply pre-operations
+        frames = perform_pre_operations(
+            frames, 
+            args.pre_operation, 
+        )
+        frames_per_file.append(frames)
+        total_frames += len(frames)
+        print(f"Successfully extracted {total_frames} frames")
     
-    if not frames:
+    if len(frames_per_file) == 0:
         print("Error: No frames extracted from videos")
         sys.exit(1)
     
-    print(f"Successfully extracted {len(frames)} frames")
     
-    # Apply pre-operations
-    frames = perform_pre_operations(
-        frames, 
-        args.pre_operation, 
-    )
-    
-    # Stitch frames
-    output = stitch_frames(frames, method=args.method)
+    # Stitch each video as an independent pano image
+    stiched_pano = []
+    for video_frames in frames_per_file:
+        pano = stitch_frames(video_frames, method=args.method)
+        visualize_output(pano)
+        stiched_pano.append(pano)
+    # Then stitch each video's pano together into a big pano
+    output = stitch_images_stack(stiched_pano)
     
     if output is None:
         print("Error: Stitching failed")
