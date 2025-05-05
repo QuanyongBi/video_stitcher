@@ -138,7 +138,7 @@ def stitch_images_linear(frames, debug_progress = False):
 
 def stitch_images_stack(frames):
     reference_panorama = frames[0]
-    base_features = 10000
+    base_features = 50000
     for i in range(1, len(frames)):
         print(f"Processing frame {i}/{len(frames)-1} ({i/(len(frames)-1)*100:.2f}%)")
         reference_panorama = stitch_two_frames(reference_panorama, frames[i], base_features)
@@ -160,7 +160,7 @@ def stitch_images_divide_conquer(frames):
         
     return stitch_two_frames(left_res, right_res, 50000)
 
-def stitch_two_frames(reference_panorama_highres, cur_frame_highres, feature_num=10000, scale_factor=0.25):
+def stitch_two_frames(reference_panorama_highres, cur_frame_highres, feature_num=10000, scale_factor=0.5):
     # Create low resolution versions
     h, w = reference_panorama_highres.shape[:2]
     new_h, new_w = int(h * scale_factor), int(w * scale_factor)
@@ -236,6 +236,8 @@ def stitch_two_frames(reference_panorama_highres, cur_frame_highres, feature_num
     # Create warped mask and compute new area
     warped_mask = cv2.cvtColor(warped_cur_frame, cv2.COLOR_BGR2GRAY) > 0
     canvas[warped_mask] = warped_cur_frame[warped_mask]
+    
+    # visualize_output(canvas)
     
     return canvas
 
