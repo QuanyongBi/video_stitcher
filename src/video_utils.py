@@ -53,7 +53,6 @@ def compress_video(input_path, output_path, scale=0.5, codec="mp4v"):
 
 def extract_and_save_frames(video_paths, output_dir = "data/extracted_frames", interval = 1, scale = 0.5):
     frames = []
-    low_res_frames = []
     
     cap = cv2.VideoCapture(video_paths[0])
     if not cap.isOpened():
@@ -92,8 +91,6 @@ def extract_and_save_frames(video_paths, output_dir = "data/extracted_frames", i
                     
                     # Store frame and path
                     frames.append(frame)
-                    small = cv2.resize(frame, (out_w, out_h), interpolation=cv2.INTER_AREA)
-                    low_res_frames.append(small)
                     # saved_paths.append(filepath)
                         
                     frame_idx += 1
@@ -102,4 +99,4 @@ def extract_and_save_frames(video_paths, output_dir = "data/extracted_frames", i
                     
             cap.release()
     print("Extracted", len(frames), "frames from", video_paths)
-    return frames, low_res_frames
+    return frames

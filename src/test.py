@@ -13,12 +13,12 @@ def main():
     #            scale=0.5,
     #            codec='mp4v')
     # high_res_frames = extract_and_save_frames("data/video_data/custom/bedroom.MOV", "data/extracted_frames", 16)
-    frames, low_res_frames = extract_and_save_frames(video_paths, "data/extracted_frames", 20)
-    corrected = correct_all_frames(frames, 0)
-    corrected_low_res = correct_all_frames(low_res_frames, 0)
+    frames = extract_and_save_frames(video_paths, "data/extracted_frames", 5)
+    # corrected = correct_all_frames(frames, 0)
+    # corrected_low_res = correct_all_frames(low_res_frames, 0)
     
     # Visualizing the output
-    output = stitch_images_stack(corrected_low_res)
+    output = stitch_images_stack(frames)
     if output is not None:
         visualize_output(output)
     
@@ -29,7 +29,7 @@ def main():
     
     
     # image_stitcher = cv2.Stitcher_create()
-    # err, output = image_stitcher.stitch(corrected)
+    # err, output = image_stitcher.stitch(frames)
     # if not err:
     #     visualize_output(output)
     

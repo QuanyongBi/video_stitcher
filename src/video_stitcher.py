@@ -160,29 +160,72 @@ def stitch_images_divide_conquer(frames):
         
     return stitch_two_frames(left_res, right_res, 50000)
 
-def stitch_two_frames(reference_panorama, cur_frame, feature_num):
-    kp_cur, _, kp_prev, _, matches = detect_and_match_features(frame_cur=cur_frame, frame_prev=reference_panorama, feature_num=feature_num)
-    # Find homography matrix
-    H, _ = find_transformation(kp_cur, kp_prev, matches)
-        
-    # Create a new canvas based on the new image
-    canvas_w, canvas_h, offset_x, offset_y = calculate_canvas_size(reference_panorama, cur_frame, H)
+def stitch_two_frames(reference_panorama_highres, cur_frame_highres, feature_num=10000, scale_factor=0.25):
+    # Create low resolution versions
+    h, w = reference_panorama_highres.shape[:2]
+    new_h, new_w = int(h * scale_factor), int(w * scale_factor)
+    reference_panorama_lowres = cv2.resize(reference_panorama_highres, (new_w, new_h))
+    
+    h, w = cur_frame_highres.shape[:2]
+    new_h, new_w = int(h * scale_factor), int(w * scale_factor)
+    cur_frame_lowres = cv2.resize(cur_frame_highres, (new_w, new_h))
+    
+    # Get dimensions to calculate scaling factors
+    h_ref_high, w_ref_high = reference_panorama_highres.shape[:2]
+    h_ref_low, w_ref_low = reference_panorama_lowres.shape[:2]
+    
+    # Calculate scaling factors
+    scale_factor_x = w_ref_high / w_ref_low
+    scale_factor_y = h_ref_high / h_ref_low
+    
+    # Detect features and find matches on low-resolution images
+    kp_cur, _, kp_prev, _, matches = detect_and_match_features(
+        frame_cur=cur_frame_lowres, 
+        frame_prev=reference_panorama_lowres, 
+        feature_num=feature_num
+    )
+    
+    # Find homography matrix for low-res images
+    H_lowres, _ = find_transformation(kp_cur, kp_prev, matches)
+    
+    if H_lowres is None:
+        print("Could not find homography, returning original reference panorama")
+        return reference_panorama_highres
+    
+    # Create scaling matrices
+    scale_matrix = np.array([
+        [scale_factor_x, 0, 0],
+        [0, scale_factor_y, 0],
+        [0, 0, 1]
+    ], dtype=np.float32)
+    scale_matrix_inv = np.array([
+        [1/scale_factor_x, 0, 0],
+        [0, 1/scale_factor_y, 0],
+        [0, 0, 1]
+    ], dtype=np.float32)
+    
+    # Scale the homography matrix: H_highres = S * H_lowres * S^(-1)
+    H_highres = scale_matrix @ H_lowres @ scale_matrix_inv
+    
+    # Create a new canvas based on the high-res images
+    canvas_w, canvas_h, offset_x, offset_y = calculate_canvas_size(reference_panorama_highres, cur_frame_highres, H_highres)
     canvas = np.zeros((canvas_h, canvas_w, 3), dtype=np.uint8)
-        
-    # Place the original panorama on the new canvas
-    h_ref, w_ref = reference_panorama.shape[:2]
-    canvas[offset_y:offset_y+h_ref, offset_x:offset_x+w_ref] = reference_panorama
-        
+    
+    h_ref, w_ref = reference_panorama_highres.shape[:2]
+    canvas[offset_y:offset_y+h_ref, offset_x:offset_x+w_ref] = reference_panorama_highres
+    
     Translation = np.array([
         [1, 0, offset_x],
         [0, 1, offset_y],
         [0, 0, 1]
     ], dtype=np.float32)
-    H_combined = Translation @ H
     
-    warped_cur_frame = np.zeros_like(canvas)    
+    H_combined = Translation @ H_highres
+    
+    # Warp the high-res current frame
+    warped_cur_frame = np.zeros_like(canvas)
     warped_cur_frame = cv2.warpPerspective(
-        cur_frame, 
+        cur_frame_highres, 
         H_combined, 
         (canvas_w, canvas_h), 
         dst=warped_cur_frame,
@@ -194,8 +237,7 @@ def stitch_two_frames(reference_panorama, cur_frame, feature_num):
     warped_mask = cv2.cvtColor(warped_cur_frame, cv2.COLOR_BGR2GRAY) > 0
     canvas[warped_mask] = warped_cur_frame[warped_mask]
     
-    reference_panorama = canvas
-    return reference_panorama
+    return canvas
 
 def calculate_canvas_size(reference_panorama, cur_frame, H):
     h_ref, w_ref = reference_panorama.shape[:2]
