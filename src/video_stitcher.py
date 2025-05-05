@@ -160,7 +160,7 @@ def stitch_images_divide_conquer(frames):
         
     return stitch_two_frames(right_res, left_res, 50000)
 
-def stitch_two_frames(reference_panorama_highres, cur_frame_highres, feature_num=10000, scale_factor=0.75):
+def stitch_two_frames(reference_panorama_highres, cur_frame_highres, feature_num=10000, scale_factor=0.5):
     # Create low resolution versions
     h, w = reference_panorama_highres.shape[:2]
     new_h, new_w = int(h * scale_factor), int(w * scale_factor)
