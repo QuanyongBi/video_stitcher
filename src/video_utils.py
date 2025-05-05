@@ -14,9 +14,9 @@ def extract_and_save_frames(video_path, interval = 1):
     if not cap.isOpened():
         print("Wrong directory or some weird stuff happened:", video_path)
     else:
-        video_name = os.path.splitext(os.path.basename(video_path))[0]
-        frames_dir = os.path.join(output_dir, video_name)
-        os.makedirs(frames_dir, exist_ok = True)
+        # video_name = os.path.splitext(os.path.basename(video_path))[0]
+        # frames_dir = os.path.join(output_dir, video_name)
+        # os.makedirs(frames_dir, exist_ok = True)
         
         while cap.isOpened():
             ret, frame = cap.read()
@@ -26,9 +26,9 @@ def extract_and_save_frames(video_path, interval = 1):
             # Extract frames based on interval
             if count % interval == 0:  
                 # Save the frame
-                filename = "frame_" + str(frame_idx) + ".png"
-                filepath = os.path.join(frames_dir, filename)
-                cv2.imwrite(filepath, frame)
+                # filename = "frame_" + str(frame_idx) + ".png"
+                # filepath = os.path.join(frames_dir, filename)
+                # cv2.imwrite(filepath, frame)
                 
                 frames.append(frame)
                 frame_idx += 1

@@ -25,17 +25,13 @@ def detect_and_match_features(frame_cur, frame_prev, feature_num):
     # matches = bf.knnMatch(desc1, desc2, k=2)
     
     # FLANN parameters
-    # FLANN_INDEX_LSH = 6
-    # index_params = dict(algorithm=FLANN_INDEX_LSH,
-    #                     table_number=6,       # Number of hash tables
-    #                     key_size=12,            # Length of the key in bits
-    #                     multi_probe_level=1)    # Number of levels to search in the hash tables
     FLANN_INDEX_KDTREE = 1
-    index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
-    search_params = dict(checks=50)   # Number of times the trees in the index should be recursively traversed
+    index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 6)
+    search_params = dict(checks=80)
     
     # Initiate the FLANN matcher
     flann = cv2.FlannBasedMatcher(index_params, search_params)
+    # flann = cv2.DescriptorMatcher_create(cv2.DescriptorMatcher_FLANNBASED)
 
     # Match descriptors
     matches = flann.knnMatch(desc1, desc2, k=2)

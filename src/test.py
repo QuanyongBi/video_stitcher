@@ -6,7 +6,7 @@ import cv2
 
 def main():
     # Extract frames from video
-    video_paths = ["data/video_data/video8/clip1.mp4", "data/video_data/video8/clip2.mp4", "data/video_data/video8/clip3.mp4"]
+    video_paths = ["data/video_data/video4/real_004.mp4"]
     # frames = extract_and_save_frames(video_paths, 10)
     # corrected = correct_all_frames(frames, 0)
     # corrected_low_res = correct_all_frames(low_res_frames, 0)

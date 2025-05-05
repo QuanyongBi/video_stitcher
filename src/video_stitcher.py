@@ -152,15 +152,15 @@ def stitch_images_divide_conquer(frames):
     if(len(frames) == 1):
         return frames[0]
     if(len(frames) == 2):
-        return stitch_two_frames(frames[0], frames[1], 50000)
+        return stitch_two_frames(frames[1], frames[0], 50000)
     
     mid = len(frames) // 2
     left_res = stitch_images_divide_conquer(frames[:mid])
-    right_res = stitch_images_divide_conquer(frames[mid+1:])
+    right_res = stitch_images_divide_conquer(frames[mid:])
         
-    return stitch_two_frames(left_res, right_res, 50000)
+    return stitch_two_frames(right_res, left_res, 50000)
 
-def stitch_two_frames(reference_panorama_highres, cur_frame_highres, feature_num=10000, scale_factor=0.5):
+def stitch_two_frames(reference_panorama_highres, cur_frame_highres, feature_num=10000, scale_factor=0.75):
     # Create low resolution versions
     h, w = reference_panorama_highres.shape[:2]
     new_h, new_w = int(h * scale_factor), int(w * scale_factor)
