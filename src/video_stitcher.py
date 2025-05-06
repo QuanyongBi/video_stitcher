@@ -236,8 +236,6 @@ def stitch_two_frames(reference_panorama_highres, cur_frame_highres, feature_num
     warped_mask = cv2.cvtColor(warped_cur_frame, cv2.COLOR_BGR2GRAY) > 0
     canvas[warped_mask] = warped_cur_frame[warped_mask]
     
-    # visualize_output(canvas)
-    
     return canvas
 
 def calculate_canvas_size(reference_panorama, cur_frame, H):

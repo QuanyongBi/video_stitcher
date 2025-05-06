@@ -9,9 +9,10 @@ from video_utils import extract_and_save_frames
 from video_stitcher import (
     stitch_images_linear, 
     stitch_images_stack, 
-    stitch_images_divide_conquer
+    stitch_images_divide_conquer,
+    stitch_two_frames
 )
-from color_alignment import correct_all_frames, match_histograms
+from color_alignment import correct_all_frames, match_histograms, correct_all_videos
 from output_visualize import visualize_output
 
 
@@ -71,22 +72,25 @@ def parse_arguments():
     
     return parser.parse_args()
     
-def perform_pre_operations(frames, operation):
+def perform_pre_operations(frames_per_file, operation):
     """Apply pre-operations to frames based on user choice."""
+    # Default using first video's middle frame as reference frame
+    ref_frame = frames_per_file[0][len(frames_per_file[0]) // 2]
+    
     if operation == 'none':
         print("No pre-operations applied.")
-        return frames
+        return frames_per_file
     
     elif operation == 'color':
         print("Applying color correction...")
-        return correct_all_frames(frames)
+        return correct_all_videos(frames_per_file, ref_frame)
     
     # TODO: Error here
     elif operation == 'histogram':
         print("Applying Histogram Matching...")
-        return match_histograms(frames)
+        return match_histograms(frames_per_file, ref_frame)
     
-    return frames
+    return frames_per_file
 
 def stitch_frames(frames, method='stack', debug=False):
     print(f"Stitching {len(frames)} frames using {method} method...")
@@ -94,18 +98,20 @@ def stitch_frames(frames, method='stack', debug=False):
     start_time = time.time()
     
     if method == 'linear':
-        output = stitch_images_linear(frames, debug_progress=debug)
+        output_pano = stitch_images_linear(frames, debug_progress=debug)
     elif method == 'stack':
-        output = stitch_images_stack(frames)
+        pano_l = stitch_images_stack(frames[0:len(frames) // 2])
+        pano_r = stitch_images_stack(frames[(len(frames) // 2 - 1):len(frames)])
+        output_pano = stitch_two_frames(pano_r, pano_l, feature_num=75000)
     elif method == 'divide-conquer':
-        output = stitch_images_divide_conquer(frames)
+        output_pano = stitch_images_divide_conquer(frames)
     else:
         raise ValueError(f"Unknown stitching method: {method}")
     
     elapsed_time = time.time() - start_time
     print(f"Stitching completed in {elapsed_time:.2f} seconds")
     
-    return output
+    return output_pano
 
 def main():
     args = parse_arguments()
@@ -138,7 +144,7 @@ def main():
     # Extract frames from videos
     # Each video file would be proceeded seperatly
     print("Extracting frames from videos...")
-    total_frames = 0
+    frames_count = 0
     frames_per_file = []
     for video in video_files: 
         frames = extract_and_save_frames(
@@ -146,13 +152,14 @@ def main():
             interval=args.interval
         )
         # Apply pre-operations
-        frames = perform_pre_operations(
-            frames, 
-            args.pre_operation, 
-        )
         frames_per_file.append(frames)
-        total_frames += len(frames)
-        print(f"Successfully extracted {total_frames} frames")
+        frames_count += len(frames)
+        print(f"Successfully extracted {frames_count} frames")
+        
+    frames_per_file = perform_pre_operations(
+        frames_per_file, 
+        args.pre_operation, 
+    )
     
     if len(frames_per_file) == 0:
         print("Error: No frames extracted from videos")
