@@ -151,7 +151,7 @@ def main():
         # Apply pre-operations
         frames_per_file.append(frames)
         frames_count += len(frames)
-        print(f"Successfully extracted {frames_count} frames")
+    print(f"Successfully extracted {frames_count} frames")
         
     frames_per_file_corrected = perform_pre_operations(
         frames_per_file, 
