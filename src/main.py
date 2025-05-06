@@ -6,10 +6,8 @@ import cv2
 from datetime import datetime
 
 from video_utils import extract_and_save_frames
-from video_stitcher import (
-    stitch_images_linear, 
+from video_stitcher_test import (
     stitch_images_stack, 
-    stitch_images_divide_conquer,
     stitch_two_frames
 )
 from color_alignment import correct_all_frames, match_histograms, correct_all_videos
@@ -92,19 +90,18 @@ def perform_pre_operations(frames_per_file, operation):
     
     return frames_per_file
 
-def stitch_frames(frames, method='stack', debug=False):
-    print(f"Stitching {len(frames)} frames using {method} method...")
+def stitch_frames(frames, corrected_frames, method='stack', debug=False):
     
     start_time = time.time()
     
     if method == 'linear':
-        output_pano = stitch_images_linear(frames, debug_progress=debug)
+        print('not supported')
     elif method == 'stack':
-        pano_l = stitch_images_stack(frames[0:len(frames) // 2])
-        pano_r = stitch_images_stack(frames[(len(frames) // 2 - 1):len(frames)])
-        output_pano = stitch_two_frames(pano_r, pano_l, feature_num=75000)
+        pano_l, pano_l_corrected = stitch_images_stack(frames[0:len(frames) // 2], corrected_frames[0:len(frames) // 2])
+        pano_r, pano_r_corrected = stitch_images_stack(frames[(len(frames) // 2 - 1):len(frames)], corrected_frames[(len(frames) // 2 - 1):len(frames)])
+        output_pano = stitch_two_frames(pano_r, pano_r_corrected, pano_l, pano_l_corrected, feature_num=75000)
     elif method == 'divide-conquer':
-        output_pano = stitch_images_divide_conquer(frames)
+        print('not supported')
     else:
         raise ValueError(f"Unknown stitching method: {method}")
     
@@ -156,7 +153,7 @@ def main():
         frames_count += len(frames)
         print(f"Successfully extracted {frames_count} frames")
         
-    frames_per_file = perform_pre_operations(
+    frames_per_file_corrected = perform_pre_operations(
         frames_per_file, 
         args.pre_operation, 
     )
@@ -168,12 +165,16 @@ def main():
     
     # Stitch each video as an independent pano image
     stiched_pano = []
-    for video_frames in frames_per_file:
-        pano = stitch_frames(video_frames, method=args.method)
+    stiched_pano_corrected = []
+    for i in range(len(frames_per_file)):
+        video_frames = frames_per_file[i]
+        corrected_video_frames = frames_per_file_corrected[i]
+        pano, pano_corrected = stitch_frames(video_frames, corrected_video_frames, method=args.method)
         visualize_output(pano)
         stiched_pano.append(pano)
+        stiched_pano_corrected.append(pano_corrected)
     # Then stitch each video's pano together into a big pano
-    output = stitch_images_stack(stiched_pano)
+    output, _ = stitch_images_stack(stiched_pano, stiched_pano_corrected)
     
     if output is None:
         print("Error: Stitching failed")
