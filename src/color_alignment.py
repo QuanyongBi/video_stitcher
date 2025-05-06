@@ -3,36 +3,28 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 
-def correct_all_frames(frames, ref_idx=None):
-    """
-    Apply global luminance and color correction to all frames using a reference frame.
-    
-    Args:
-        frames: List of input frames
-        ref_idx: Index of the reference frame. If None, the middle frame is used.
-        
-    Returns:
-        List of corrected frames
-    """
+def correct_all_videos(frames_per_file, ref_frame=None):
+    corrected = []
+    for frames in frames_per_file:
+        corrected.append(correct_all_frames(frames, ref_frame))
+    return corrected
+
+
+def correct_all_frames(frames, ref_frame=None):
     if len(frames) < 2:
         return frames
     
     # Use middle frame as reference if not specified
-    if ref_idx is None:
-        ref_idx = len(frames) // 2
+    if ref_frame is None:
+        ref_frame = frames[len(frames) // 2]
     
-    reference_frame = frames[ref_idx]
+    reference_frame = ref_frame
     corrected_frames = []
     
     for i, frame in enumerate(frames):
-        if i == ref_idx:
-            # Skip reference frame
-            corrected_frames.append(frame)
-        else:
-            # Apply both luminance and color correction
-            corrected = correct_luminance_and_color(frame, reference_frame)
-            corrected_frames.append(corrected)
-            
+        # Apply both luminance and color correction
+        corrected = correct_luminance_and_color(frame, reference_frame)
+        corrected_frames.append(corrected)
         print(f"Color corrected frame {i+1}/{len(frames)}")
     
     return corrected_frames
@@ -71,7 +63,6 @@ def correct_luminance_and_color(target, reference):
     corrected = cv2.cvtColor(corrected_lab, cv2.COLOR_LAB2BGR)
     
     return corrected
-
 
 def correct_color_channel(source, reference):
     """

@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 from feature_matching import detect_and_match_features, find_transformation
-from output_visualize import visualize_output
 
 def stitch_images_linear(frames, debug_progress = False):
     if len(frames) < 2:
@@ -236,8 +235,6 @@ def stitch_two_frames(reference_panorama_highres, cur_frame_highres, feature_num
     # Create warped mask and compute new area
     warped_mask = cv2.cvtColor(warped_cur_frame, cv2.COLOR_BGR2GRAY) > 0
     canvas[warped_mask] = warped_cur_frame[warped_mask]
-    
-    # visualize_output(canvas)
     
     return canvas
 
