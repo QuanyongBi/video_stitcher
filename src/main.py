@@ -99,7 +99,7 @@ def stitch_frames(frames, corrected_frames, method='stack', debug=False):
     elif method == 'stack':
         pano_l, pano_l_corrected = stitch_images_stack(frames[0:len(frames) // 2], corrected_frames[0:len(frames) // 2])
         pano_r, pano_r_corrected = stitch_images_stack(frames[(len(frames) // 2 - 1):len(frames)], corrected_frames[(len(frames) // 2 - 1):len(frames)])
-        output_pano = stitch_two_frames(pano_r, pano_r_corrected, pano_l, pano_l_corrected, feature_num=75000)
+        output_pano, output_corrected = stitch_two_frames(pano_r, pano_r_corrected, pano_l, pano_l_corrected, feature_num=75000)
     elif method == 'divide-conquer':
         print('not supported')
     else:
@@ -108,7 +108,7 @@ def stitch_frames(frames, corrected_frames, method='stack', debug=False):
     elapsed_time = time.time() - start_time
     print(f"Stitching completed in {elapsed_time:.2f} seconds")
     
-    return output_pano
+    return output_pano, output_corrected
 
 def main():
     args = parse_arguments()
@@ -170,7 +170,8 @@ def main():
         video_frames = frames_per_file[i]
         corrected_video_frames = frames_per_file_corrected[i]
         pano, pano_corrected = stitch_frames(video_frames, corrected_video_frames, method=args.method)
-        visualize_output(pano)
+        # visualize_output(pano)
+        # visualize_output(pano_corrected)
         stiched_pano.append(pano)
         stiched_pano_corrected.append(pano_corrected)
     # Then stitch each video's pano together into a big pano

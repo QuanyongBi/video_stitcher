@@ -12,7 +12,7 @@ def stitch_images_stack(frames, corrected_frames):
         ref_pano, corrected_pano = stitch_two_frames(ref_pano, corrected_pano, frames[i], corrected_frames[i])
     return ref_pano, corrected_pano
 
-def stitch_two_frames(ref_pano_highres, corrected_pano_highres, cur_frame_highres, corrected_frame_highres, feature_num=10000, scale_factor=1, feather_width=30):
+def stitch_two_frames(ref_pano_highres, corrected_pano_highres, cur_frame_highres, corrected_frame_highres, feature_num=10000, scale_factor=0.75, feather_width=30):
     # Create low resolution versions for the color_corrected pano and frame
     h, w = corrected_pano_highres.shape[:2]
     new_h, new_w = int(h * scale_factor), int(w * scale_factor)

@@ -26,7 +26,7 @@ def detect_and_match_features(frame_cur, frame_prev, feature_num):
     
     # FLANN parameters
     FLANN_INDEX_KDTREE = 1
-    index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=6)
+    index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
     search_params = dict(checks=80)
     
     # Initiate the FLANN matcher
@@ -60,7 +60,7 @@ def find_transformation(kp_src, kp_dest, matches, method='homography'):
     H, status = cv2.findHomography(
         src_pts, dst_pts, 
         cv2.RANSAC, 
-        4.0,
+        5.0,
         confidence=0.995
     )
     
