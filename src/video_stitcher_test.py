@@ -103,12 +103,11 @@ def stitch_two_frames(ref_pano_highres, corrected_pano_highres, cur_frame_highre
         borderMode=cv2.BORDER_TRANSPARENT
     )
     
-    
     warped_mask = cv2.cvtColor(warped_corrected_frame, cv2.COLOR_BGR2GRAY) > 0
     canvas_corrected[warped_mask] = warped_corrected_frame[warped_mask]
     
     mask2 = cv2.threshold(cv2.cvtColor(warped_cur_frame, cv2.COLOR_BGR2GRAY), 0, 255, cv2.THRESH_TOZERO)[1]
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (4,4))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
     mask2 = cv2.morphologyEx(mask2, cv2.MORPH_ERODE, kernel)
     
     # warped_cur_frame[mask2==0] = 0
