@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from feature_matching import detect_and_match_features, find_transformation
 from video_stitcher import calculate_canvas_size
+from output_visualize import visualize_output
 
 def stitch_images_stack(frames, corrected_frames):
     ref_pano = frames[0]
@@ -11,7 +12,7 @@ def stitch_images_stack(frames, corrected_frames):
         ref_pano, corrected_pano = stitch_two_frames(ref_pano, corrected_pano, frames[i], corrected_frames[i])
     return ref_pano, corrected_pano
 
-def stitch_two_frames(ref_pano_highres, corrected_pano_highres, cur_frame_highres, corrected_frame_highres, feature_num=10000, scale_factor=0.75):
+def stitch_two_frames(ref_pano_highres, corrected_pano_highres, cur_frame_highres, corrected_frame_highres, feature_num=10000, scale_factor=1, feather_width=30):
     # Create low resolution versions for the color_corrected pano and frame
     h, w = corrected_pano_highres.shape[:2]
     new_h, new_w = int(h * scale_factor), int(w * scale_factor)
@@ -38,9 +39,9 @@ def stitch_two_frames(ref_pano_highres, corrected_pano_highres, cur_frame_highre
     H_lowres, status = find_transformation(kp_cur, kp_prev, matches)
     if H_lowres is None:
         print("Could not find homography, returning original reference panorama")
-        return ref_pano_highres
+        return ref_pano_highres, corrected_pano_highres
     
-        # Create scaling matrices
+    # Create scaling matrices
     scale_matrix = np.array([
         [scale_factor_x, 0, 0],
         [0, scale_factor_y, 0],
@@ -63,6 +64,15 @@ def stitch_two_frames(ref_pano_highres, corrected_pano_highres, cur_frame_highre
     h_ref, w_ref = ref_pano_highres.shape[:2]
     canvas_ref[offset_y:offset_y+h_ref, offset_x:offset_x+w_ref] = ref_pano_highres
     canvas_corrected[offset_y:offset_y+h_ref, offset_x:offset_x+w_ref] = corrected_pano_highres
+    
+    # Create a mask for the reference panorama
+    ref_mask = np.zeros((canvas_h, canvas_w), dtype=np.uint8)
+    ref_mask[offset_y:offset_y+h_ref, offset_x:offset_x+w_ref] = 255
+    
+    # Find contours of the reference panorama to identify true edges
+    contours_ref, _ = cv2.findContours(ref_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    ref_edge_mask = np.zeros_like(ref_mask)
+    cv2.drawContours(ref_edge_mask, contours_ref, -1, 255, 1)  # Draw just the edge contour (1 pixel thick)
     
     Translation = np.array([
         [1, 0, offset_x],
@@ -92,10 +102,19 @@ def stitch_two_frames(ref_pano_highres, corrected_pano_highres, cur_frame_highre
         flags=cv2.INTER_LINEAR,
         borderMode=cv2.BORDER_TRANSPARENT
     )
-    # Create warped mask and compute new area
-    warped_mask = cv2.cvtColor(warped_cur_frame, cv2.COLOR_BGR2GRAY) > 0
-
-    canvas_ref[warped_mask] = warped_cur_frame[warped_mask]
+    
+    
+    warped_mask = cv2.cvtColor(warped_corrected_frame, cv2.COLOR_BGR2GRAY) > 0
     canvas_corrected[warped_mask] = warped_corrected_frame[warped_mask]
+    
+    mask2 = cv2.threshold(cv2.cvtColor(warped_cur_frame, cv2.COLOR_BGR2GRAY), 0, 255, cv2.THRESH_TOZERO)[1]
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (4,4))
+    mask2 = cv2.morphologyEx(mask2, cv2.MORPH_ERODE, kernel)
+    
+    # warped_cur_frame[mask2==0] = 0
+
+    # Apply the mask
+    warped_cur_frame[mask2 > 0] = warped_cur_frame[mask2 > 0]
+    canvas_ref[mask2> 0] = warped_cur_frame[mask2 > 0]
     
     return canvas_ref, canvas_corrected

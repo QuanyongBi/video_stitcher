@@ -57,6 +57,11 @@ def find_transformation(kp_src, kp_dest, matches, method='homography'):
     src_pts = np.float32([kp1[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
     dst_pts = np.float32([kp2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
     
-    H, status = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 4.0)
+    H, status = cv2.findHomography(
+        src_pts, dst_pts, 
+        cv2.RANSAC, 
+        4.0,
+        confidence=0.995
+    )
     
     return H, status
