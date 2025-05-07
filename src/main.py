@@ -55,7 +55,7 @@ def parse_arguments():
     parser.add_argument(
         '--pre-operation', 
         type=str, 
-        choices=['none', 'color', 'histogram',],
+        choices=['none', 'color', 'histogram', 'contrast'],
         default='none',
         help='Pre-operation to apply to frames (default: none)'
     )
@@ -82,6 +82,18 @@ def perform_pre_operations(frames_per_file, operation):
     elif operation == 'color':
         print("Applying color correction...")
         return correct_all_videos(frames_per_file, ref_frame)
+    
+    elif operation == 'contrast':
+        ret = []
+        for frames in frames_per_file:
+            new_frames = []
+            for f in frames:
+                alpha = 1.5  # Contrast factor (< 1 reduces contrast)
+                beta =  1    # Brightness factor to compensate
+                f = cv2.convertScaleAbs(f, alpha=alpha, beta=beta)
+                new_frames.append(f)
+            ret.append(new_frames)
+        return ret
     
     # TODO: Error here
     elif operation == 'histogram':
